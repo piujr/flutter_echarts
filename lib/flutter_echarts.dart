@@ -52,21 +52,23 @@ class Echarts extends StatefulWidget {
 
   final bool reloadAfterInit;
 
+  WebViewController? controller;
+
   @override
   _EchartsState createState() => _EchartsState();
 }
 
 class _EchartsState extends State<Echarts> {
-  WebViewController? _controller;
 
   String? _currentOption;
 
   @override
   void initState() {
     super.initState();
+    
     _currentOption = widget.option;
 
-    _controller = WebViewController()
+    widget.controller = WebViewController()
       ..setBackgroundColor(Color(0x00000000))
       ..loadHtmlString(utf8.fuse(base64).decode(htmlBase64))
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
@@ -75,7 +77,7 @@ class _EchartsState extends State<Echarts> {
           onPageFinished: (url) => init(),
           onWebResourceError: (e) {
             if (widget.onWebResourceError != null) {
-              widget.onWebResourceError!(_controller!, Exception(e));
+              widget.onWebResourceError!(widget.controller!, Exception(e));
             }
           },
         ),
@@ -88,7 +90,7 @@ class _EchartsState extends State<Echarts> {
 
     if (widget.reloadAfterInit) {
       new Future.delayed(const Duration(milliseconds: 100), () {
-        _controller?.reload();
+        widget.controller?.reload();
       });
     }
   }
@@ -96,7 +98,7 @@ class _EchartsState extends State<Echarts> {
   void init() async {
     final extensionsStr = this.widget.extensions.length > 0 ? this.widget.extensions.reduce((value, element) => value + '\n' + element) : '';
     final themeStr = this.widget.theme != null ? '\'${this.widget.theme}\'' : 'null';
-    await _controller?.runJavaScript('''
+    await widget.controller?.runJavaScript('''
       $echartsScript
       $extensionsStr
       var chart = echarts.init(document.getElementById('chart'), $themeStr);
@@ -104,7 +106,7 @@ class _EchartsState extends State<Echarts> {
       chart.setOption($_currentOption, true);
     ''');
     if (widget.onLoad != null) {
-      widget.onLoad!(_controller!);
+      widget.onLoad!(widget.controller!);
     }
   }
 
@@ -136,7 +138,7 @@ class _EchartsState extends State<Echarts> {
   void update(String preOption) async {
     _currentOption = widget.option;
     if (_currentOption != preOption) {
-      await _controller?.runJavaScript('''
+      await widget.controller?.runJavaScript('''
         try {
           chart.setOption($_currentOption, true);
         } catch(e) {
@@ -153,14 +155,14 @@ class _EchartsState extends State<Echarts> {
 
   @override
   void dispose() {
-    _controller?.clearCache();
+    widget.controller?.clearCache();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return WebViewWidget(
-        controller: _controller!,
+        controller: widget.controller!,
         gestureRecognizers: getGestureRecognizers());
   }
 }
